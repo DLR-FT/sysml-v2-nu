@@ -50,7 +50,7 @@ module sysml {
 
 
 
- 
+
   def tag_ids [context: string] {
     let project_id = ($context | str trim | split row ' ' | last)
     tags $project_id
@@ -74,11 +74,13 @@ module sysml {
 
 
 
-  
+
   def commit_ids [context: string] {
     let project_id = ($context | str trim | split row ' ' | last)
     commits $project_id
-      | each { |it| { value: $it.'@id', description: $it.description } }
+      | update created {|it| $it.created | into datetime}
+      | sort-by created --reverse
+      | each { |it| { value: $it.'@id', description: $"($it.created): ($it.description)" } }
   }
 
   # Get all commits of a project, or a specific commit
@@ -98,7 +100,7 @@ module sysml {
 
 
 
-  
+
   def element_ids [context: string] {
     let ids = ($context | str trim | split row ' ' | last 2)
     elements $ids.0 $ids.1
@@ -144,17 +146,17 @@ module sysml {
       # if element is a list of subelements
       if ($field_type == "table<@id: string>") {
         $element = ($element | update $field_name {|_|
-          $field | each {|row| 
+          $field | each {|row|
             let $new_element_id = ($row | get '@id')
             elements $project_id $commit_id $new_element_id
-          } 
+          }
         })
       }
 
       # if element is just a record
       if ($field_type == "record<@id: string>") {
         let new_element_id = ($field | get '@id')
-        $element = ($element | update $field_name {|_| 
+        $element = ($element | update $field_name {|_|
           elements $project_id $commit_id $new_element_id
         })
       }
