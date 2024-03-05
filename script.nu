@@ -1,12 +1,6 @@
 let SYSML_URL = 'https://sysml-v2.ft-ssy-stonks.intra.dlr.de'
 
 
-# def sysml_api_request [
-#   path: list
-# ] {
-#   [ $SYSML_URL ] + $path | str join '/'
-# }
-
 module sysml {
   def project_ids [ ] {
     projects | each { |it| { value: $it.'@id', description: $it.name } }
@@ -104,7 +98,8 @@ module sysml {
   def element_ids [context: string] {
     let ids = ($context | str trim | split row ' ' | last 2)
     elements $ids.0 $ids.1
-      | each { |it| { value: $it.'@id', description: $"($it.name):($it.'@type')" } }
+      | sort-by 'qualifiedName'
+      | each { |it| { value: $it.'@id', description: $"($it.qualifiedName) [($it.'@type')]" } }
   }
 
   # Get all commits of a project, or a specific commit
@@ -117,9 +112,12 @@ module sysml {
 
     # id of the branch to get
     element_id?: string@element_ids
+
+    # number of elements to fetch
+    --page-size: int = 100
   ] {
     if ($element_id == null) {
-      http get $"($SYSML_URL)/projects/($project_id)/commits/($commit_id)/elements"
+      http get $"($SYSML_URL)/projects/($project_id)/commits/($commit_id)/elements?page%5Bsize%5D=($page_size)"
     } else {
       http get $"($SYSML_URL)/projects/($project_id)/commits/($commit_id)/elements/($element_id)"
     }
